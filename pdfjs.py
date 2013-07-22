@@ -20,13 +20,13 @@ from PyQt4.QtWebKit import QWebView, QWebSettings
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 
-here = partial(p.join, p.dirname(__file__))
+here = partial(p.join, p.realpath(p.dirname(__file__)))
 
 with open(here('insert_fullscreen.js')) as f:
 	INSERT_FULLSCREEN_JS = f.read()
 
-CSS_URL = here('pdf.js/web/viewer.css')
-VIEWER_URL = here('pdf.js/web/viewer.html')
+CSS_PATH = here('pdf.js/web/viewer.css')
+VIEWER_PATH = here('pdf.js/web/viewer.html')
 
 
 class FullscreenCSSFixer(QNetworkAccessManager):
@@ -39,13 +39,14 @@ class FullscreenCSSFixer(QNetworkAccessManager):
 		super().__init__()
 		self.url = url
 		
-		with open(self.url) as f:
+		with open(self.url.path()) as f:
 			css = f.read().replace(':fullscreen', '.fullscreen')
 		
 		# fake maximizing of #viewerContainer
 		css += """.fullscreen {
 			position: absolute;
 			top: 0; left: 0;
+			border-width: 0 !important;
 			height:100%; width: 100%;
 			z-index: 10000;
 		}"""
@@ -56,7 +57,7 @@ class FullscreenCSSFixer(QNetworkAccessManager):
 		self.data_uri = QUrl(uri)
 	
 	def createRequest(self, op, req, outgoingData=None):
-		if req.url().path().endswith(self.url):
+		if req.url() == self.url:
 			reply = super().createRequest(QNetworkAccessManager.GetOperation, QNetworkRequest(self.data_uri))
 		else:
 			reply = super().createRequest(op, req, outgoingData)
@@ -70,7 +71,7 @@ class PDFView(QWebView):
 	def __init__(self, url, parent=None):
 		super().__init__(parent)
 		
-		self.access_manager = FullscreenCSSFixer(CSS_URL)
+		self.access_manager = FullscreenCSSFixer(QUrl('file://' + CSS_PATH))
 		self.page().setNetworkAccessManager(self.access_manager)
 		
 		self.page().mainFrame().initialLayoutCompleted.connect(self.extend_window)
@@ -79,7 +80,7 @@ class PDFView(QWebView):
 		if urlparse(url).scheme in ('', 'file'):
 			url = p.realpath(url)
 		
-		qurl = QUrl(VIEWER_URL)
+		qurl = QUrl(VIEWER_PATH)
 		qurl.addQueryItem('file', url)  # TODO: fix http urls
 		self.load(qurl)
 		
@@ -88,7 +89,7 @@ class PDFView(QWebView):
 	
 	@Slot(QUrl)
 	def link_clicked(self, url):
-		if url.toString().endswith("#pdfjs.action=download"):
+		if url.fragment() == 'pdfjs.action=download':
 			QDesktopServices.openUrl(url)
 	
 	def extend_window(self):
@@ -115,6 +116,7 @@ if __name__ == '__main__':
 	args = parser.parse_args(app.arguments()[1:])
 	
 	web_settings = QWebSettings.globalSettings()
+	#web_settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 	web_settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 	if args.debug:
 		web_settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
