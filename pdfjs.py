@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Shell around Mozilla’s PDF.js
 
@@ -17,6 +18,7 @@ from PyQt4.QtGui import QApplication, QDesktopServices
 from PyQt4.QtCore import Qt, QUrl, pyqtSlot
 from PyQt4.QtWebKit import QWebView, QWebSettings
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
+
 
 here = partial(p.join, p.dirname(__file__))
 
@@ -55,9 +57,11 @@ class FullscreenCSSFixer(QNetworkAccessManager):
 	
 	def createRequest(self, op, req, outgoingData=None):
 		if req.url().path().endswith(self.url):
-			return super().createRequest(QNetworkAccessManager.GetOperation, QNetworkRequest(self.data_uri))
+			reply = super().createRequest(QNetworkAccessManager.GetOperation, QNetworkRequest(self.data_uri))
 		else:
-			return super().createRequest(op, req, outgoingData)
+			reply = super().createRequest(op, req, outgoingData)
+		
+		return reply
 
 #TODO: canvas.mozPrintCallback
 
@@ -101,6 +105,7 @@ class PDFView(QWebView):
 			else:
 				js('document.getElementById("viewerContainer").requestFullscreen()')
 
+
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
 	
@@ -109,8 +114,10 @@ if __name__ == '__main__':
 	parser.add_argument('file', help='File to open')
 	args = parser.parse_args(app.arguments()[1:])
 	
+	web_settings = QWebSettings.globalSettings()
+	web_settings.setAttribute(QWebSettings.LocalContentCanAccessRemoteUrls, True)
 	if args.debug:
-		QWebSettings.globalSettings().setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
+		web_settings.setAttribute(QWebSettings.DeveloperExtrasEnabled, True)
 	
 	view = PDFView(args.file)
 	view.show()
