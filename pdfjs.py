@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from functools import partial
 
 from PyQt4.QtGui import QApplication, QDesktopServices
-from PyQt4.QtCore import Qt, QUrl, pyqtSlot
+from PyQt4.QtCore import Qt, QUrl, pyqtSlot as Slot
 from PyQt4.QtWebKit import QWebView, QWebSettings
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
@@ -82,11 +82,11 @@ class PDFView(QWebView):
 		qurl = QUrl(VIEWER_URL)
 		qurl.addQueryItem('file', url)  # TODO: fix http urls
 		self.load(qurl)
-
+		
 		self.page().setLinkDelegationPolicy(self.page().DelegateAllLinks)
 		self.linkClicked.connect(self.link_clicked)
-
-	@pyqtSlot(QUrl)
+	
+	@Slot(QUrl)
 	def link_clicked(self, url):
 		if url.toString().endswith("#pdfjs.action=download"):
 			QDesktopServices.openUrl(url)
